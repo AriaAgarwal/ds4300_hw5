@@ -1,0 +1,67 @@
+CREATE INDEX song_track_id IF NOT EXISTS FOR (s:Song) ON (s.track_id)
+
+CREATE INDEX song_artists IF NOT EXISTS FOR (s:Song) ON (s.artists);
+
+LOAD CSV WITH HEADERS FROM 'file:///Users/ariaagarwal/Documents/GitHub/ds4300_hw5/spotify_edges.csv' AS row
+MERGE (a:Song {track_id: row.track_id_a})
+SET a.track_name = row.track_name_a,
+    a.artists = row.artists_a,
+    a.album_name = row.album_name_a,
+    a.track_genre = row.track_genre_a,
+    a.popularity = toInteger(row.popularity_a),
+    a.mood = row.mood_a,
+    a.sample_type = row.sample_type_a
+MERGE (b:Song {track_id: row.track_id_b})
+SET b.track_name = row.track_name_b,
+    b.artists = row.artists_b,
+    b.album_name = row.album_name_b,
+    b.track_genre = row.track_genre_b,
+    b.popularity = toInteger(row.popularity_b),
+    b.mood = row.mood_b,
+    b.sample_type = row.sample_type_b
+MERGE (a)-[r:SIMILAR_TO]->(b)
+SET r.audio_distance = toFloat(row.audio_distance),
+    r.same_genre = row.same_genre,
+    r.same_mood = row.same_mood,
+    r.similarity_score = toFloat(row.similarity_score)
+
+
+
+ // Step 1: collect seed songs
+MATCH (seed:Song)
+WHERE seed.artists CONTAINS 'The Strokes'
+   OR seed.artists CONTAINS 'Regina Spektor'
+
+// Step 2: find ONLY 1-hop neighbors
+MATCH (seed)-[r:SIMILAR_TO]-(candidate:Song)
+WHERE NOT (candidate.artists CONTAINS 'The Strokes'
+        OR candidate.artists CONTAINS 'Regina Spektor')
+
+// Step 3: compute average similarity per candidate
+WITH candidate,
+     avg(toFloat(r.similarity_score)) AS avg_score,
+     count(seed) AS connections
+
+// Step 4: rank within each artist (max 2 per artist)
+ORDER BY candidate.artists, avg_score DESC
+WITH candidate.artists AS artist,
+     collect({
+         song: candidate,
+         score: avg_score,
+         connections: connections
+     })[0..2] AS top_per_artist
+
+// Step 5: flatten results
+UNWIND top_per_artist AS rec
+
+// Step 6: return top 5 overall
+RETURN
+    rec.song.track_name  AS track,
+    rec.song.artists     AS artist,
+    rec.song.album_name  AS album,
+    rec.song.track_genre AS genre,
+    rec.song.mood        AS mood,
+    rec.connections      AS num_seed_connections,
+    round(rec.score, 4)  AS avg_similarity_score
+ORDER BY avg_similarity_score DESC
+LIMIT 5;
