@@ -72,7 +72,7 @@ def main():
         "acousticness", "instrumentalness", "liveness", "valence", "tempo",
     ]
     seed_artists = ["The Strokes", "Regina Spektor"]
-    total_size = 2000
+    total_size = 1000
     random_frac = 0.10
     n_clusters = 10
     random_state = 42

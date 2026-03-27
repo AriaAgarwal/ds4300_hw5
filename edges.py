@@ -116,7 +116,7 @@ def main():
         "valence",
         "tempo",
     ]
-    similarity_threshold = 0.6
+    similarity_threshold = 0.7
 
     df = pd.read_csv("spotify_sampled.csv")
     edges_df = generate_edges(df, features, similarity_threshold)
